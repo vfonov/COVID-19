@@ -1,0 +1,111 @@
+---
+title: "Covid-19 Timeline in select places"
+output:
+  html_document:
+    toc: false
+    theme: united
+    self_contained: false
+    dev: png
+---
+```{r setup, include=FALSE, eval=TRUE, echo=FALSE, message=FALSE,warning=FALSE,cache=FALSE}
+library(tidyverse)
+library(lubridate)
+
+
+# load data from CSV files
+# CSSE uses M-D-Y notation
+first<-as.Date("2020-01-22")
+last<-as.Date(Sys.time())# 
+
+csse<-data.frame()
+for(i in as.list(seq(first, last, by='day'))) {
+    fn <- paste0('csse_covid_19_data/csse_covid_19_daily_reports/',format(i,'%m-%d-%Y'),'.csv')
+    if( file.exists(fn) )  {
+        entry<-read_csv(fn,col_types = cols(.default = col_character())) 
+        entry$date<-i
+        csse<-bind_rows(csse, entry)
+    }
+}
+
+c<-csse%>% type_convert() %>% 
+    mutate(country_region=if_else(is.na(`Country/Region`),Country_Region,`Country/Region`),
+           province_state=if_else(is.na(`Province/State`),Province_State,`Province/State`)) %>%
+    dplyr::select(-`Country/Region`,-`Province/State`,-Country_Region,-Province_State) %>%
+    filter(!is.na(country_region)) %>%
+    mutate(country_region=if_else(country_region=='Korea, South','South Korea',country_region))
+```
+
+# Prefilter data
+```{r}
+subset<-c('Canada', 'Russia', 'Japan', 'Spain', 'US', 'South Korea')
+
+# summarize within each country 
+cc<-c %>%filter(country_region %in% subset) %>% mutate(country_region=as.factor(country_region)) %>% 
+    group_by(country_region,date) %>% 
+    summarize(Confirmed=as.integer(sum(Confirmed,na.rm = T)),Deaths=as.integer(sum(Deaths,na.rm = T)))
+
+st<-cc%>%filter(Confirmed>50)%>%group_by(country_region)%>%summarize(start_50=min(date), last=max(date))
+cc<-cc%>%filter(Confirmed>50)%>%inner_join(st,by='country_region') %>% 
+        mutate(days_since_50=as.integer(date-start_50))
+last<-cc%>%filter(date==last)
+```
+
+# Plotting confirmed cases in select countries
+Looks like geom_smooth doesn't work very well with poisson family, so using quasipoisson instead
+```{r message=FALSE,warning=FALSE, fig.height=7, fig.width=10}
+
+ggplot(cc,aes(x=days_since_50, y=Confirmed, col=country_region))+
+    geom_ribbon(aes(fill=country_region, col=country_region), stat='smooth',
+                method='glm', method.args=list(family = 'quasipoisson'), alpha=0.2,size=0)+
+    geom_line(aes(fill=country_region, col=country_region),stat='smooth',
+                method='glm', method.args=list(family = 'quasipoisson'), alpha=0.7, size=2)+
+    geom_point(shape='+',size=4,alpha=0.9)+
+    geom_label(data=last,aes(label=country_region),nudge_x=1,fill='white',alpha=1.0)+
+    scale_y_log10()+annotation_logticks(sides='l')+
+    ylab('Confirmed, log scale')+
+    theme_bw()+
+    guides(color="none",fill="none")
+
+```
+
+# Using simple regression model
+```{r}
+
+family<-poisson(link="log")
+ilink=family$linkinv
+
+# here Confirmed cases 
+model<-glm(Confirmed~days_since_50*country_region,data=cc,family=family)
+print(summary(model))
+# predict how a country will be doing
+
+simul<-expand.grid(days_since_50=seq(0, max(cc$days_since_50)), 
+                   country_region=levels(cc$country_region))
+
+pred<-predict(model, newdata=simul, se.fit=T)
+
+# convert prediction and 95% confidence intervals:
+simul$pred<-ilink(pred$fit)
+simul$pred_lwr<-ilink(pred$fit-2*pred$se.fit)
+simul$pred_upr<-ilink(pred$fit+2*pred$se.fit)
+
+
+# add guide lines
+
+
+```
+
+```{r message=FALSE,warning=FALSE, fig.height=7, fig.width=10}
+#    geom_ribbon(alpha=0.2, size=0)+
+
+ggplot(simul, aes(x=days_since_50, y=pred, col=country_region, fill=country_region, ymin=pred_lwr,ymax=pred_upr))+
+    geom_ribbon(alpha=0.2, size=0)+
+    geom_line(alpha=0.8, size=0.5)+
+    geom_point(data=cc,aes(x=days_since_50, y=Confirmed, col=country_region),shape='+',size=4,alpha=0.3,inherit.aes=F)+
+    geom_line(data=cc,aes(x=days_since_50, y=Confirmed, col=country_region),shape='+',size=0.5,alpha=0.8,lty=2,inherit.aes=F)+
+    geom_label(data=last,aes(label=country_region,x=days_since_50, y=Confirmed,col=country_region),nudge_x=1,fill='white',alpha=1.0,inherit.aes=F)+
+    scale_y_log10()+annotation_logticks(sides='l')+
+    ylab('Confirmed, log scale')+
+    theme_bw()+
+    guides(color="none",fill='none')
+```

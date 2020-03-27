@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+
+
+
+<title>Covid-19 Timeline in select places</title>
+
+<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/united.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<link href="site_libs/highlightjs-9.12.0/default.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+<style type="text/css">
+h1 {
+  font-size: 34px;
+}
+h1.title {
+  font-size: 38px;
+}
+h2 {
+  font-size: 30px;
+}
+h3 {
+  font-size: 24px;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 12px;
+}
+.table th:not([align]) {
+  text-align: left;
+}
+</style>
+
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img {
+  max-width:100%;
+  height: auto;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+</style>
+
+
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "&#xe258;";
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open')
+  });
+});
+</script>
+
+<!-- code folding -->
+
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+
+
+<div class="fluid-row" id="header">
+
+
+
+<h1 class="title toc-ignore">Covid-19 Timeline in select places</h1>
+
+</div>
+
+
+<div id="prefilter-data" class="section level1">
+<h1>Prefilter data</h1>
+<pre class="r"><code>subset&lt;-c(&#39;Canada&#39;, &#39;Russia&#39;, &#39;Japan&#39;, &#39;Spain&#39;, &#39;US&#39;, &#39;South Korea&#39;)
+
+# summarize within each country 
+cc&lt;-c %&gt;%filter(country_region %in% subset) %&gt;% mutate(country_region=as.factor(country_region)) %&gt;% 
+    group_by(country_region,date) %&gt;% 
+    summarize(Confirmed=as.integer(sum(Confirmed,na.rm = T)),Deaths=as.integer(sum(Deaths,na.rm = T)))
+
+st&lt;-cc%&gt;%filter(Confirmed&gt;50)%&gt;%group_by(country_region)%&gt;%summarize(start_50=min(date), last=max(date))
+cc&lt;-cc%&gt;%filter(Confirmed&gt;50)%&gt;%inner_join(st,by=&#39;country_region&#39;) %&gt;% 
+        mutate(days_since_50=as.integer(date-start_50))
+last&lt;-cc%&gt;%filter(date==last)</code></pre>
+</div>
+<div id="plotting-confirmed-cases-in-select-countries" class="section level1">
+<h1>Plotting confirmed cases in select countries</h1>
+<p>Looks like geom_smooth doesn’t work very well with poisson family, so using quasipoisson instead</p>
+<pre class="r"><code>ggplot(cc,aes(x=days_since_50, y=Confirmed, col=country_region))+
+    geom_ribbon(aes(fill=country_region, col=country_region), stat=&#39;smooth&#39;,
+                method=&#39;glm&#39;, method.args=list(family = &#39;quasipoisson&#39;), alpha=0.2,size=0)+
+    geom_line(aes(fill=country_region, col=country_region),stat=&#39;smooth&#39;,
+                method=&#39;glm&#39;, method.args=list(family = &#39;quasipoisson&#39;), alpha=0.7, size=2)+
+    geom_point(shape=&#39;+&#39;,size=4,alpha=0.9)+
+    geom_label(data=last,aes(label=country_region),nudge_x=1,fill=&#39;white&#39;,alpha=1.0)+
+    scale_y_log10()+annotation_logticks(sides=&#39;l&#39;)+
+    ylab(&#39;Confirmed, log scale&#39;)+
+    theme_bw()+
+    guides(color=&quot;none&quot;,fill=&quot;none&quot;)</code></pre>
+<p><img src="index_files/figure-html/unnamed-chunk-2-1.png" width="960" /></p>
+</div>
+<div id="using-simple-regression-model" class="section level1">
+<h1>Using simple regression model</h1>
+<pre class="r"><code>family&lt;-poisson(link=&quot;log&quot;)
+ilink=family$linkinv
+
+# here Confirmed cases 
+model&lt;-glm(Confirmed~days_since_50*country_region,data=cc,family=family)
+print(summary(model))</code></pre>
+<pre><code>## 
+## Call:
+## glm(formula = Confirmed ~ days_since_50 * country_region, family = family, 
+##     data = cc)
+## 
+## Deviance Residuals: 
+##     Min       1Q   Median       3Q      Max  
+## -55.533   -4.216   -0.534    3.493   33.872  
+## 
+## Coefficients:
+##                                          Estimate Std. Error z value
+## (Intercept)                              3.763136   0.030743 122.407
+## days_since_50                            0.240698   0.001930 124.728
+## country_regionJapan                      0.838628   0.037173  22.560
+## country_regionRussia                     0.375486   0.055653   6.747
+## country_regionSouth Korea                3.812872   0.031281 121.890
+## country_regionSpain                      2.112703   0.031805  66.426
+## country_regionUS                        -0.984293   0.033354 -29.510
+## days_since_50:country_regionJapan       -0.170883   0.002056 -83.100
+## days_since_50:country_regionRussia      -0.025350   0.005384  -4.708
+## days_since_50:country_regionSouth Korea -0.187526   0.001944 -96.482
+## days_since_50:country_regionSpain       -0.033117   0.001968 -16.832
+## days_since_50:country_regionUS           0.037907   0.001984  19.107
+##                                         Pr(&gt;|z|)    
+## (Intercept)                              &lt; 2e-16 ***
+## days_since_50                            &lt; 2e-16 ***
+## country_regionJapan                      &lt; 2e-16 ***
+## country_regionRussia                    1.51e-11 ***
+## country_regionSouth Korea                &lt; 2e-16 ***
+## country_regionSpain                      &lt; 2e-16 ***
+## country_regionUS                         &lt; 2e-16 ***
+## days_since_50:country_regionJapan        &lt; 2e-16 ***
+## days_since_50:country_regionRussia      2.50e-06 ***
+## days_since_50:country_regionSouth Korea  &lt; 2e-16 ***
+## days_since_50:country_regionSpain        &lt; 2e-16 ***
+## days_since_50:country_regionUS           &lt; 2e-16 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## (Dispersion parameter for poisson family taken to be 1)
+## 
+##     Null deviance: 2385147  on 165  degrees of freedom
+## Residual deviance:   37775  on 154  degrees of freedom
+## AIC: 39261
+## 
+## Number of Fisher Scoring iterations: 5</code></pre>
+<pre class="r"><code># predict how a country will be doing
+
+simul&lt;-expand.grid(days_since_50=seq(0, max(cc$days_since_50)), 
+                   country_region=levels(cc$country_region))
+
+pred&lt;-predict(model, newdata=simul, se.fit=T)
+
+# convert prediction and 95% confidence intervals:
+simul$pred&lt;-ilink(pred$fit)
+simul$pred_lwr&lt;-ilink(pred$fit-2*pred$se.fit)
+simul$pred_upr&lt;-ilink(pred$fit+2*pred$se.fit)
+
+
+# add guide lines</code></pre>
+<pre class="r"><code>#    geom_ribbon(alpha=0.2, size=0)+
+
+ggplot(simul, aes(x=days_since_50, y=pred, col=country_region, fill=country_region, ymin=pred_lwr,ymax=pred_upr))+
+    geom_ribbon(alpha=0.2, size=0)+
+    geom_line(alpha=0.8, size=0.5)+
+    geom_point(data=cc,aes(x=days_since_50, y=Confirmed, col=country_region),shape=&#39;+&#39;,size=4,alpha=0.3,inherit.aes=F)+
+    geom_line(data=cc,aes(x=days_since_50, y=Confirmed, col=country_region),shape=&#39;+&#39;,size=0.5,alpha=0.8,lty=2,inherit.aes=F)+
+    geom_label(data=last,aes(label=country_region,x=days_since_50, y=Confirmed,col=country_region),nudge_x=1,fill=&#39;white&#39;,alpha=1.0,inherit.aes=F)+
+    scale_y_log10()+annotation_logticks(sides=&#39;l&#39;)+
+    ylab(&#39;Confirmed, log scale&#39;)+
+    theme_bw()+
+    guides(color=&quot;none&quot;,fill=&#39;none&#39;)</code></pre>
+<p><img src="index_files/figure-html/unnamed-chunk-4-1.png" width="960" /></p>
+</div>
+
+
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

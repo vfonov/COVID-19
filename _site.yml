@@ -1,0 +1,4 @@
+name: "COVID-19 plots"
+exclude: ["*"]
+include: ["index_files"]
+output_dir: "www"
